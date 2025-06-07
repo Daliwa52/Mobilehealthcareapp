@@ -1,0 +1,82 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users: Own data readable/writable, public info readable by others if any.
+    // For now, only allow owner to read/write their own user document if a generic /users/{userId} collection is used.
+    // This app primarily uses Patients and HealthcareProfessionals collections for user-specific data.
+
+    // Patients: Profile data. Only owner can read/write.
+    match /patients/{patientId} {
+      allow read, write: if request.auth != null && request.auth.uid == patientId;
+      // Example for future: Allow a professional to read if they have an accepted appointment with the patient
+      // allow read: if request.auth != null && (request.auth.uid == patientId ||
+      //  exists(/databases/$(database)/documents/appointments/{appointmentId}) &&
+      //  resource.data.patientId == patientId && // Ensure it's the correct patient document
+      //  get(/databases/$(database)/documents/appointments/{appointmentId}).data.professionalId == request.auth.uid &&
+      //  get(/databases/$(database)/documents/appointments/{appointmentId}).data.status == "scheduled"
+      // );
+    }
+
+    // HealthcareProfessionals: Profile data.
+    // Authenticated users (e.g., patients) should be able to read professional profiles to select them.
+    // Owner can write their own profile.
+    match /healthcareProfessionals/{professionalId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == professionalId;
+    }
+
+    // Appointments:
+    // Patient and the involved professional can read.
+    // Patient can create an appointment.
+    // Patient or the involved professional can update status (e.g., for cancellation).
+    match /appointments/{appointmentId} {
+      function isParticipant(appointmentData) {
+        return request.auth.uid == appointmentData.patientId || request.auth.uid == appointmentData.professionalId;
+      }
+
+      allow read: if request.auth != null && isParticipant(resource.data);
+      // Patient creates the appointment, so their ID must match.
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.patientId;
+      // Allow update for status changes by either participant.
+      // More granular control might be needed for specific fields.
+      allow update: if request.auth != null && isParticipant(resource.data);
+      // Disallow delete for now to keep history; rely on 'status' field like 'cancelled'.
+      allow delete: if false;
+    }
+
+    // Chats:
+    // Only participants (sender/receiver) can read/write messages in their chat room.
+    // Chat room ID is assumed to be {userId1}_{userId2} (sorted alphabetically).
+    match /chats/{chatRoomId} {
+      function isChatParticipant() {
+        return request.auth != null && chatRoomId.split('_').includes(request.auth.uid);
+      }
+      // Allow read/write access to the chat room document itself if needed for metadata (e.g., last message timestamp)
+      // For now, focusing on messages subcollection.
+      // allow read, write: if isChatParticipant();
+
+      // Messages subcollection
+      match /messages/{messageId} {
+        allow read, create: if isChatParticipant();
+        // Disallow update/delete of messages for integrity, unless specific features require it (e.g., admin moderation).
+        allow update, delete: if false;
+      }
+    }
+
+    // Payments:
+    // Patient who made the payment and the involved professional can read.
+    // Patient can create (when making a payment).
+    // No updates/deletes for now to preserve financial record integrity; use status fields.
+    match /payments/{paymentId} {
+      function isPaymentParticipant(paymentData) {
+        return request.auth.uid == paymentData.patientId || request.auth.uid == paymentData.professionalId;
+      }
+      allow read: if request.auth != null && isPaymentParticipant(resource.data);
+      // Patient creates the payment record.
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.patientId;
+      allow update, delete: if false;
+    }
+  }
+}
