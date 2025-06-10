@@ -164,7 +164,7 @@ public class AppointmentAdapter extends RecyclerView.Adapter<AppointmentAdapter.
                     }
                 })
                 .addOnFailureListener(e -> {
-                    Toast.makeText(context, "Failed to cancel appointment: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, context.getString(R.string.error_cancelling_appointment, e.getLocalizedMessage()), Toast.LENGTH_SHORT).show();
                     Log.e(TAG, "Error cancelling appointment", e);
                 });
     }

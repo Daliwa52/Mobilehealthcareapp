@@ -28,7 +28,7 @@
     <string name="button_login">Login</string>
     <string name="button_logout">Logout</string>
     <string name="button_save_patient_profile">Save Profile</string>
-    <string name="button_upload_document">Upload Medical Document (Coming Soon)</string>
+    <string name="button_upload_document">Upload New Document</string>
     <string name="button_go_to_profile">My Patient Profile</string>
     <string name="button_save_professional_profile">Save Professional Profile</string>
     <string name="button_manage_schedule">Manage Schedule (Coming Soon)</string>
@@ -44,6 +44,10 @@
     <string name="button_pay_now">Pay Now</string>
     <string name="button_view_patient_payment_history">View Payment History</string>
     <string name="button_view_professional_billing_history">View Billing History</string>
+    <string name="button_reset">Reset</string>
+    <string name="button_cancel">Cancel</string>
+    <string name="button_view_document">View Document</string>
+    <string name="button_delete_document">Delete Document</string>
 
 
     <!-- Link Text -->
@@ -62,11 +66,12 @@
     <string name="title_activity_chat">Chat</string>
     <string name="title_activity_payment">Complete Payment</string>
     <string name="title_activity_payment_history">Payment History</string>
+    <string name="title_password_reset">Reset Password</string>
 
 
     <!-- Labels and Placeholders -->
     <string name="label_appointment_history">Appointment History (Coming Soon)</string>
-    <string name="label_medical_documents">Medical Documents (Coming Soon)</string>
+    <string name="label_medical_documents">Medical Documents</string> <!-- Changed from "Medical Documents (Coming Soon)" -->
     <string name="placeholder_no_appointments">No appointments yet.</string>
     <string name="placeholder_no_documents">No documents uploaded.</string>
     <string name="label_professional_appointment_history">Patient Appointments (Coming Soon)</string>
@@ -86,13 +91,56 @@
     <string name="item_payment_date_placeholder">Date: YYYY-MM-DD HH:mm</string>
     <string name="item_payment_status_placeholder">Status: Unknown</string>
     <string name="item_payment_method_placeholder">Method: Unknown</string>
+    <string name="payment_details_intro">With %1$s\non %2$s</string>
+    <string name="label_uploaded_documents">Uploaded Documents</string>
+    <string name="label_no_documents_uploaded">No documents uploaded yet.</string>
+    <string name="select_medical_document_title">Select Medical Document</string>
 
 
     <!-- Content Descriptions -->
     <string name="content_description_profile_pic">Profile Picture</string>
     <string name="content_description_professional_profile_pic">Professional Profile Picture</string>
+    <string name="desc_document_icon">Document Icon</string>
+
 
     <!-- Other -->
     <string name="welcome_message">Welcome!</string>
+    <string name="login_successful">Login successful!</string>
+    <string name="registration_successful">Registration successful!</string>
+    <string name="password_reset_sent">Password reset email sent! Check your inbox.</string>
+    <string name="profile_save_success">Profile saved successfully!</string>
+    <string name="profile_load_no_data">No profile found. Please fill in your details.</string>
+    <string name="appointment_request_success">Appointment requested successfully! Awaiting approval.</string>
+    <string name="appointment_cancelled">Appointment cancelled.</string>
+    <string name="message_sent_success">Message sent.</string>
+    <string name="payment_successful_message">Your payment of $%.2f has been processed successfully.</string>
+    <string name="payment_failed_message">Your payment could not be processed. Please check your card details or try again later.</string>
+    <string name="file_picker_no_manager">Please install a File Manager.</string>
+
+
+    <!-- Error Messages -->
+    <string name="error_email_exists">This email is already registered. Please login.</string>
+    <string name="error_weak_password">Password is too weak. Please enter a stronger password (at least 6 characters).</string>
+    <string name="error_registration_failed">Registration failed. Please check your details and try again.</string>
+    <string name="error_login_failed_generic">Login failed. Please check your credentials or network connection.</string>
+    <string name="error_user_not_found">No account found with this email. Please register.</string>
+    <string name="error_incorrect_password">Incorrect password. Please try again.</string>
+    <string name="error_password_reset_failed_generic">Failed to send password reset email. Please try again.</string>
+    <string name="error_password_reset_email_not_found">No account found with this email. Cannot send reset instructions.</string>
+    <string name="error_profile_save_failed">Could not save profile. Please try again later.</string>
+    <string name="error_profile_load_failed">Could not load profile. Please try again later.</string>
+    <string name="error_fetching_patient_details">Could not verify your details. Please try again.</string>
+    <string name="error_booking_failed_detailed">Failed to book appointment: %1$s</string>
+    <string name="error_booking_failed_generic">Failed to book appointment. Please try again.</string>
+    <string name="error_loading_appointments">Error loading appointments.</string>
+    <string name="error_cancelling_appointment">Failed to cancel appointment: %1$s</string>
+    <string name="error_sending_message">Error sending message. Please try again.</string>
+    <string name="error_loading_messages">Failed to load messages. Check connection.</string>
+    <string name="error_payment_generic">Payment processing failed. Please try again.</string>
+    <string name="error_payment_record_failed">Error recording payment details: %1$s</string>
+    <string name="error_payment_appointment_update_failed">Payment was processed, but there was an error updating the appointment status. Please contact support.</string>
+    <string name="error_loading_payment_history">Error loading payment history.</string>
+    <string name="error_loading_professionals">Error loading professionals list.</string>
+
 
 </resources>

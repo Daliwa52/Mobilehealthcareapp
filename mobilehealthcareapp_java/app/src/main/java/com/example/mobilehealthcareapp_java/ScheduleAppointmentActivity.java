@@ -36,7 +36,7 @@ import java.util.Locale;
 public class ScheduleAppointmentActivity extends AppCompatActivity {
 
     private static final String TAG = "ScheduleAppointment";
-    private static final double DEFAULT_APPOINTMENT_FEE = 50.0; // Default fee
+    private static final double DEFAULT_APPOINTMENT_FEE = 50.0;
 
     private TextView textViewSelectedProfessionalName;
     private EditText editTextAppointmentDate, editTextAppointmentTime, editTextAppointmentReason;
@@ -49,6 +49,8 @@ public class ScheduleAppointmentActivity extends AppCompatActivity {
     private String professionalId;
     private String professionalName;
     private Calendar selectedDateTime = Calendar.getInstance();
+    private boolean dateSelected = false;
+    private boolean timeSelected = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,7 +72,7 @@ public class ScheduleAppointmentActivity extends AppCompatActivity {
         professionalName = getIntent().getStringExtra("PROFESSIONAL_NAME");
 
         if (professionalId == null || professionalName == null) {
-            Toast.makeText(this, "Professional details not found.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Professional details not found. Cannot schedule appointment.", Toast.LENGTH_LONG).show();
             finish();
             return;
         }
@@ -78,7 +80,7 @@ public class ScheduleAppointmentActivity extends AppCompatActivity {
         textViewSelectedProfessionalName = findViewById(R.id.textViewSelectedProfessionalName);
         editTextAppointmentDate = findViewById(R.id.editTextAppointmentDate);
         editTextAppointmentTime = findViewById(R.id.editTextAppointmentTime);
-        editTextAppointmentReason = findViewById(R.id.editTextAppointmentReason);
+        editTextAppointmentReason = findViewById(R.id.editTextAppointmentReason); // Optional field
         buttonConfirmAppointment = findViewById(R.id.buttonConfirmAppointment);
 
         textViewSelectedProfessionalName.setText(professionalName);
@@ -97,12 +99,14 @@ public class ScheduleAppointmentActivity extends AppCompatActivity {
                     selectedDateTime.set(Calendar.MONTH, month);
                     selectedDateTime.set(Calendar.DAY_OF_MONTH, dayOfMonth);
                     updateDateEditText();
+                    dateSelected = true;
+                    editTextAppointmentDate.setError(null); // Clear error on selection
                 },
                 selectedDateTime.get(Calendar.YEAR),
                 selectedDateTime.get(Calendar.MONTH),
                 selectedDateTime.get(Calendar.DAY_OF_MONTH)
         );
-        datePickerDialog.getDatePicker().setMinDate(System.currentTimeMillis() - 1000);
+        datePickerDialog.getDatePicker().setMinDate(System.currentTimeMillis() - 1000); // Today onwards
         datePickerDialog.show();
     }
 
@@ -113,10 +117,12 @@ public class ScheduleAppointmentActivity extends AppCompatActivity {
                     selectedDateTime.set(Calendar.HOUR_OF_DAY, hourOfDay);
                     selectedDateTime.set(Calendar.MINUTE, minute);
                     updateTimeEditText();
+                    timeSelected = true;
+                    editTextAppointmentTime.setError(null); // Clear error on selection
                 },
                 selectedDateTime.get(Calendar.HOUR_OF_DAY),
                 selectedDateTime.get(Calendar.MINUTE),
-                false
+                false // Use false for 24-hour format if desired, true for AM/PM
         );
         timePickerDialog.show();
     }
@@ -127,64 +133,82 @@ public class ScheduleAppointmentActivity extends AppCompatActivity {
     }
 
     private void updateTimeEditText() {
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.US);
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.US); // Use "hh:mm a" for AM/PM
         editTextAppointmentTime.setText(sdf.format(selectedDateTime.getTime()));
     }
 
     private void confirmAppointment() {
-        String dateStr = editTextAppointmentDate.getText().toString();
-        String timeStr = editTextAppointmentTime.getText().toString();
-        String reason = editTextAppointmentReason.getText().toString().trim();
+        editTextAppointmentDate.setError(null);
+        editTextAppointmentTime.setError(null);
 
-        if (TextUtils.isEmpty(dateStr) || TextUtils.isEmpty(timeStr)) {
-            Toast.makeText(this, "Please select date and time.", Toast.LENGTH_SHORT).show();
+        boolean isValid = true;
+        if (!dateSelected) {
+            editTextAppointmentDate.setError("Please select a date for the appointment.");
+            isValid = false;
+        }
+        if (!timeSelected) {
+            editTextAppointmentTime.setError("Please select a time for the appointment.");
+            isValid = false;
+        }
+
+        if (!isValid) {
+            Toast.makeText(this, "Please select a valid date and time.", Toast.LENGTH_SHORT).show();
             return;
         }
 
+        String reason = editTextAppointmentReason.getText().toString().trim(); // Optional
+
+        // Show progress bar here if you have one
+
         db.collection("patients").document(currentFirebaseUser.getUid()).get()
             .addOnSuccessListener(documentSnapshot -> {
-                String patientName = "Unknown Patient";
+                String patientName = "Unknown Patient"; // Default name
                 if (documentSnapshot.exists()) {
                     Patient patient = documentSnapshot.toObject(Patient.class);
-                    if (patient != null && patient.getName() != null) {
+                    if (patient != null && !TextUtils.isEmpty(patient.getName())) {
                         patientName = patient.getName();
                     }
                 }
                 proceedWithBooking(patientName, reason);
             })
             .addOnFailureListener(e -> {
-                Log.e(TAG, "Error fetching patient details", e);
-                Toast.makeText(ScheduleAppointmentActivity.this, "Error fetching your details. Try again.", Toast.LENGTH_SHORT).show();
+                // Hide progress bar here
+                Log.e(TAG, "Error fetching patient details for appointment booking", e);
+                Toast.makeText(ScheduleAppointmentActivity.this, R.string.error_fetching_patient_details, Toast.LENGTH_SHORT).show();
             });
     }
 
     private void proceedWithBooking(String patientName, String reason) {
         Date appointmentDate = selectedDateTime.getTime();
-        Timestamp appointmentTimestamp = new Timestamp(appointmentDate);
+        Timestamp appointmentFirebaseTimestamp = new Timestamp(appointmentDate);
 
         Appointment appointment = new Appointment(
                 currentFirebaseUser.getUid(),
                 patientName,
                 professionalId,
                 professionalName,
-                appointmentTimestamp,
-                "pending_approval",
+                appointmentFirebaseTimestamp,
+                "pending_approval", // Default status
                 reason,
-                DEFAULT_APPOINTMENT_FEE, // Set default fee
+                DEFAULT_APPOINTMENT_FEE,
                 "unpaid" // Initial payment status
         );
 
         db.collection("appointments")
                 .add(appointment)
                 .addOnSuccessListener(documentReference -> {
-                    Toast.makeText(ScheduleAppointmentActivity.this, "Appointment requested successfully!", Toast.LENGTH_LONG).show();
+                    // Hide progress bar here
+                    Toast.makeText(ScheduleAppointmentActivity.this, "Appointment requested successfully! Awaiting approval.", Toast.LENGTH_LONG).show();
                     String newAppointmentId = documentReference.getId();
-                    // Update appointment with its own ID
-                    db.collection("appointments").document(newAppointmentId).update("appointmentId", newAppointmentId);
+                    // Update the appointment with its own ID for easier reference if needed
+                    db.collection("appointments").document(newAppointmentId).update("appointmentId", newAppointmentId)
+                        .addOnSuccessListener(aVoid -> Log.d(TAG, "Appointment ID updated in document: " + newAppointmentId))
+                        .addOnFailureListener(e -> Log.w(TAG, "Error updating appointment with its ID", e));
                     finish();
                 })
                 .addOnFailureListener(e -> {
-                    Toast.makeText(ScheduleAppointmentActivity.this, "Failed to book appointment: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    // Hide progress bar here
+                    Toast.makeText(ScheduleAppointmentActivity.this, getString(R.string.error_booking_failed_detailed, e.getLocalizedMessage()), Toast.LENGTH_LONG).show();
                     Log.e(TAG, "Error booking appointment", e);
                 });
     }

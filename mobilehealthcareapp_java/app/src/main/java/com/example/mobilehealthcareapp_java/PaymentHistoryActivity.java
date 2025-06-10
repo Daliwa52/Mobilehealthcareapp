@@ -115,9 +115,9 @@ public class PaymentHistoryActivity extends AppCompatActivity {
                 }
             } else {
                 Log.w(TAG, "Error getting payment history: ", task.getException());
-                Toast.makeText(PaymentHistoryActivity.this, "Error loading payment history.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(PaymentHistoryActivity.this, R.string.error_loading_payment_history, Toast.LENGTH_SHORT).show();
                 textViewNoPaymentsHistory.setVisibility(View.VISIBLE);
-                textViewNoPaymentsHistory.setText("Error loading payment history.");
+                textViewNoPaymentsHistory.setText(R.string.error_loading_payment_history);
             }
         });
     }

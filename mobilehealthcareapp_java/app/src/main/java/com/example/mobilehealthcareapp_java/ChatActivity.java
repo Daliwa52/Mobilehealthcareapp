@@ -6,7 +6,9 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.Editable; // For TextWatcher
 import android.text.TextUtils;
+import android.text.TextWatcher; // For TextWatcher
 import android.util.Log;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -31,7 +33,7 @@ public class ChatActivity extends AppCompatActivity {
     private static final String TAG = "ChatActivity";
 
     public static final String EXTRA_RECEIVER_ID = "RECEIVER_ID";
-    public static final String EXTRA_RECEIVER_NAME = "RECEIVER_NAME"; // Optional: for display in toolbar
+    public static final String EXTRA_RECEIVER_NAME = "RECEIVER_NAME";
 
     private RecyclerView recyclerViewMessages;
     private MessageAdapter messageAdapter;
@@ -66,10 +68,10 @@ public class ChatActivity extends AppCompatActivity {
         senderId = currentUser.getUid();
 
         receiverId = getIntent().getStringExtra(EXTRA_RECEIVER_ID);
-        String receiverName = getIntent().getStringExtra(EXTRA_RECEIVER_NAME); // Use this for the ActionBar title if needed
+        String receiverName = getIntent().getStringExtra(EXTRA_RECEIVER_NAME);
 
         if (receiverId == null) {
-            Toast.makeText(this, "Receiver not specified.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Receiver not specified. Cannot open chat.", Toast.LENGTH_LONG).show();
             finish();
             return;
         }
@@ -77,7 +79,7 @@ public class ChatActivity extends AppCompatActivity {
         if (getSupportActionBar() != null && !TextUtils.isEmpty(receiverName)) {
             getSupportActionBar().setTitle("Chat with " + receiverName);
         } else if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle("Chat");
+            getSupportActionBar().setTitle(R.string.title_activity_chat); // Use string resource
         }
 
 
@@ -90,9 +92,24 @@ public class ChatActivity extends AppCompatActivity {
         messageList = new ArrayList<>();
         messageAdapter = new MessageAdapter(this, messageList);
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
-        linearLayoutManager.setStackFromEnd(true); // To show latest messages at the bottom
+        linearLayoutManager.setStackFromEnd(true);
         recyclerViewMessages.setLayoutManager(linearLayoutManager);
         recyclerViewMessages.setAdapter(messageAdapter);
+
+        // Initially disable send button if message is empty
+        buttonSendMessage.setEnabled(false);
+        editTextMessage.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                buttonSendMessage.setEnabled(!TextUtils.isEmpty(s.toString().trim()));
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
 
         buttonSendMessage.setOnClickListener(v -> sendMessage());
 
@@ -100,7 +117,6 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     private String getChatRoomId(String userId1, String userId2) {
-        // Sort IDs alphabetically to ensure consistency
         List<String> ids = Arrays.asList(userId1, userId2);
         Collections.sort(ids);
         return ids.get(0) + "_" + ids.get(1);
@@ -108,23 +124,31 @@ public class ChatActivity extends AppCompatActivity {
 
     private void sendMessage() {
         String messageText = editTextMessage.getText().toString().trim();
+        // Check is already handled by TextWatcher enabling/disabling the button
         if (TextUtils.isEmpty(messageText)) {
+            // Toast.makeText(this, "Cannot send an empty message.", Toast.LENGTH_SHORT).show(); // Optional: if button could still be clicked
             return;
         }
 
         Message message = new Message(senderId, receiverId, messageText);
-        // Timestamp will be set by @ServerTimestamp
+        // Timestamp will be set by @ServerTimestamp in Message model
+
+        // Show progress indicator if any
+        buttonSendMessage.setEnabled(false); // Temporarily disable during send
 
         db.collection("chats").document(chatRoomId)
                 .collection("messages")
                 .add(message)
                 .addOnSuccessListener(documentReference -> {
-                    editTextMessage.setText("");
+                    editTextMessage.setText(""); // Clear input field
+                    // buttonSendMessage remains disabled until text is entered due to TextWatcher
                     Log.d(TAG, "Message sent successfully: " + documentReference.getId());
-                    // RecyclerView should scroll down automatically due to stackFromEnd and adapter notification
+                    // RecyclerView should scroll down automatically if new items are added at the end
+                    // and stackFromEnd is true or you manually scroll.
                 })
                 .addOnFailureListener(e -> {
-                    Toast.makeText(ChatActivity.this, "Error sending message: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    buttonSendMessage.setEnabled(true); // Re-enable on failure
+                    Toast.makeText(ChatActivity.this, "Error sending message. Please try again.", Toast.LENGTH_SHORT).show();
                     Log.e(TAG, "Error sending message", e);
                 });
     }
@@ -140,24 +164,14 @@ public class ChatActivity extends AppCompatActivity {
                     }
 
                     if (snapshots != null) {
-                        // Using a loop through document changes for more efficient updates
-                        // than clearing and re-adding the whole list on every snapshot.
                         for (DocumentChange dc : snapshots.getDocumentChanges()) {
-                            switch (dc.getType()) {
-                                case ADDED:
-                                    Message newMessage = dc.getDocument().toObject(Message.class);
-                                    newMessage.setMessageId(dc.getDocument().getId());
-                                    messageAdapter.addMessage(newMessage);
-                                    recyclerViewMessages.scrollToPosition(messageList.size() - 1);
-                                    break;
-                                // Handle MODIFIED and REMOVED if necessary for your app logic
-                                // case MODIFIED:
-                                // Log.d(TAG, "Modified message: " + dc.getDocument().getData());
-                                // break;
-                                // case REMOVED:
-                                // Log.d(TAG, "Removed message: " + dc.getDocument().getData());
-                                // break;
+                            if (dc.getType() == DocumentChange.Type.ADDED) {
+                                Message newMessage = dc.getDocument().toObject(Message.class);
+                                newMessage.setMessageId(dc.getDocument().getId());
+                                messageAdapter.addMessage(newMessage); // Adapter handles adding and notifying
+                                recyclerViewMessages.scrollToPosition(messageList.size() - 1);
                             }
+                            // Handle MODIFIED or REMOVED if needed
                         }
                     }
                 });
@@ -167,7 +181,7 @@ public class ChatActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         if (messagesListener != null) {
-            messagesListener.remove(); // Stop listening to prevent memory leaks
+            messagesListener.remove();
         }
     }
 }

@@ -29,7 +29,7 @@ public class ProfessionalProfileActivity extends AppCompatActivity {
 
     private EditText editTextProfessionalName, editTextQualifications, editTextSpecialties, editTextAvailability;
     private Button buttonSaveProfessionalProfile, buttonManageSchedule,
-                   buttonViewProfessionalAppointments, buttonViewProfessionalBillingHistory; // Added buttonViewProfessionalBillingHistory
+                   buttonViewProfessionalAppointments, buttonViewProfessionalBillingHistory;
     private ImageView imageViewProfessionalProfilePic;
 
     private FirebaseAuth firebaseAuth;
@@ -61,7 +61,7 @@ public class ProfessionalProfileActivity extends AppCompatActivity {
         buttonSaveProfessionalProfile = findViewById(R.id.buttonSaveProfessionalProfile);
         buttonManageSchedule = findViewById(R.id.buttonManageSchedule);
         buttonViewProfessionalAppointments = findViewById(R.id.buttonViewProfessionalAppointments);
-        buttonViewProfessionalBillingHistory = findViewById(R.id.buttonViewProfessionalBillingHistory); // Initialized button
+        buttonViewProfessionalBillingHistory = findViewById(R.id.buttonViewProfessionalBillingHistory);
 
         buttonSaveProfessionalProfile.setOnClickListener(v -> saveProfessionalProfile());
 
@@ -83,24 +83,59 @@ public class ProfessionalProfileActivity extends AppCompatActivity {
     }
 
     private void saveProfessionalProfile() {
+        // Clear previous errors
+        editTextProfessionalName.setError(null);
+        editTextQualifications.setError(null);
+        editTextSpecialties.setError(null);
+        editTextAvailability.setError(null);
+
         String name = editTextProfessionalName.getText().toString().trim();
         String qualifications = editTextQualifications.getText().toString().trim();
         String specialtiesStr = editTextSpecialties.getText().toString().trim();
         String availability = editTextAvailability.getText().toString().trim();
 
-        if (TextUtils.isEmpty(name) || TextUtils.isEmpty(qualifications) || TextUtils.isEmpty(specialtiesStr) || TextUtils.isEmpty(availability)) {
-            Toast.makeText(this, "All fields are required.", Toast.LENGTH_SHORT).show();
+        boolean isValid = true;
+
+        if (TextUtils.isEmpty(name)) {
+            editTextProfessionalName.setError("Name is required.");
+            isValid = false;
+        }
+        if (TextUtils.isEmpty(qualifications)) {
+            editTextQualifications.setError("Qualifications are required.");
+            isValid = false;
+        }
+        if (TextUtils.isEmpty(specialtiesStr)) {
+            editTextSpecialties.setError("At least one specialty is required.");
+            isValid = false;
+        }
+        if (TextUtils.isEmpty(availability)) {
+            editTextAvailability.setError("Availability information is required.");
+            isValid = false;
+        }
+
+        if (!isValid) {
+            Toast.makeText(this, "Please correct the errors.", Toast.LENGTH_SHORT).show();
             return;
         }
 
+        // Assuming specialties are comma-separated; could be enhanced with a ChipGroup or similar.
         List<String> specialtiesList = Arrays.asList(specialtiesStr.split("\\s*,\\s*"));
+        // Filter out empty strings if user puts multiple commas, e.g., "Cardiology,,Pediatrics"
+        specialtiesList.removeAll(Arrays.asList("", null));
+        if(specialtiesList.isEmpty()){
+             editTextSpecialties.setError("Valid specialties are required (comma-separated).");
+             Toast.makeText(this, "Please enter valid specialties.", Toast.LENGTH_SHORT).show();
+             return;
+        }
+
+
         HealthcareProfessional professional = new HealthcareProfessional(name, qualifications, specialtiesList, availability);
 
         db.collection("healthcareProfessionals").document(currentUserId)
                 .set(professional)
-                .addOnSuccessListener(aVoid -> Toast.makeText(ProfessionalProfileActivity.this, "Profile saved successfully!", Toast.LENGTH_SHORT).show())
+                .addOnSuccessListener(aVoid -> Toast.makeText(ProfessionalProfileActivity.this, R.string.profile_save_success, Toast.LENGTH_SHORT).show())
                 .addOnFailureListener(e -> {
-                    Toast.makeText(ProfessionalProfileActivity.this, "Error saving profile: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    Toast.makeText(ProfessionalProfileActivity.this, R.string.error_profile_save_failed, Toast.LENGTH_LONG).show();
                     Log.e(TAG, "Error saving profile", e);
                 });
     }
@@ -121,11 +156,12 @@ public class ProfessionalProfileActivity extends AppCompatActivity {
                     editTextAvailability.setText(professional.getAvailability());
                 }
             } else {
-                Log.d(TAG, "No such professional document");
+                Log.d(TAG, "No such professional document, profile can be created.");
+                 Toast.makeText(ProfessionalProfileActivity.this, R.string.profile_load_no_data, Toast.LENGTH_SHORT).show();
             }
         }).addOnFailureListener(e -> {
-            Log.d(TAG, "get failed with ", e);
-            Toast.makeText(ProfessionalProfileActivity.this, "Failed to load profile.", Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "Failed to load profile with error: ", e); // Log the full exception
+            Toast.makeText(ProfessionalProfileActivity.this, R.string.error_profile_load_failed, Toast.LENGTH_SHORT).show();
         });
     }
 }
